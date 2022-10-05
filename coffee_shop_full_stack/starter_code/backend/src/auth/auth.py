@@ -35,33 +35,36 @@ def get_token_auth_header():
     I.E Obtains the Access Token from the Authorization Header
     '''
 
-    auth = request.headers.get('Authorization', None)
-    if not auth:
+    # get the token
+    auth_header = request.headers.get('Authorization', None)
+    # check if authorization is not in request
+    if not auth_header:
         raise AuthError({
             'code': 'authorization_header_missing',
             'description': 'Authorization header is expected.'
         }, 401)
 
-    parts = auth.split()
-    if parts[0].lower() != 'bearer':
+    header_parts = auth_header.split()
+    if header_parts[0].lower() != 'bearer':
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Authorization header must start with "Bearer".'
         }, 401)
-
-    elif len(parts) == 1:
+    
+    # check if token is valid
+    elif len(header_parts) == 1:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Token not found.'
         }, 401)
 
-    elif len(parts) > 2:
+    elif len(header_parts) > 2:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Authorization header must be bearer token.'
         }, 401)
 
-    token = parts[1]
+    token = header_parts[1]
     return token
 
 
@@ -79,13 +82,19 @@ Implementing a check_permissions(permission, payload) method
 '''
 
     if 'permissions' not in payload:
-        abort(401)
+                        raise AuthError({
+                            'code': 'invalid_claims',
+                            'description': 'Permissions not included in JWT.'
+                        }, 400)
 
+    #check if permission exits within that payload array
     if permission not in payload['permissions']:
-        abort(401)
-        
-    return True
+        raise AuthError({
+            'code': 'unauthorized',
+            'description': 'Permission not found.'
+        }, 403)
 
+    return True    
 
 ## Auth Header
 def verify_decode_jwt(token):
@@ -179,12 +188,17 @@ it should uses the verify_decode_jwt method to decode the jwt
 it should uses the check_permissions method validate claims and check the requested permission and
 returns the decorator which passes the decoded payload to the decorated method
 '''
+#default the parameter to single prmision string string
 def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            token = get_token_auth_header()
-            payload = verify_decode_jwt(token)
+            jwt = get_token_auth_header()
+            try:
+                payload = verify_decode_jwt(jwt)
+            except:
+                abort(401)  
+            # ensure that the permision exist in the required claim in jwt      
             check_permissions(permission, payload)
             return f(payload, *args, **kwargs)
 

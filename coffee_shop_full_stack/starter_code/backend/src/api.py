@@ -17,7 +17,7 @@ uncomment the following line to initialize the datbase
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 !! Running this funciton will add one
 '''
-#db_drop_and_create_all()
+db_drop_and_create_all()
 
 ####################### ROUTES ##############################
 '''
@@ -30,13 +30,13 @@ uncomment the following line to initialize the datbase
 
 @app.route('/drinks')
 def get_drinks():
-    #unpack the request header
-    auth_header = request.headers['Authorization']
-    header_parts = auth_header.split(' ')[1]
-    print(header_parts)
-    get_drinks = Drink.query.all()
+    
+    drinks_queried = Drink.query.order_by(Drink.id).all()
 
-    drinks = [drink.short() for drink in get_drinks]
+    drinks = [drink.short() for drink in drinks_queried]
+
+    if not drinks_queried:
+        abort(404)
 
     return jsonify({
         'success': True,
@@ -55,8 +55,11 @@ GET /drinks-detail endpoint
 @app.route('/drinks-detail', methods=['GET'])
 #@requires_auth('get:drinks-detail')
 def get_drinks_detail(jwt):
-    get_drinks = Drink.query.all()
-    drinks = [drink.long() for drink in get_drinks]
+    get_details = Drink.query.order_by(Drink.id).all()
+    drinks = [drink.long() for drink in get_details]
+
+    if not get_details:
+        abort(404)
 
     return jsonify({
 
@@ -82,11 +85,11 @@ def create_drinks(jwt):
     if 'title' and 'recipe' not in data:
         abort(422)
     
-    post_drinks = Drink(title=data['title'], recipe=json.dumps(data['recipe']))
-    drink = [post_drinks.long()]
+    new_drink = Drink(title=data['title'], recipe=json.dumps(data['recipe']))
+    drink = [new_drink.long()]
 
     try:
-        post_drinks.insert()
+        new_drink.insert()
     except:
         abort(422)
 
@@ -108,7 +111,8 @@ PATCH /drinks/<id> endpoint:
 
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
-def edit_drinks(jwt,drink_id):
+def edit_drink(jwt,drink_id):
+
     get_drink = Drink.query.get(drink_id)
     drink = [get_drink.long()]
 
@@ -121,7 +125,9 @@ def edit_drinks(jwt,drink_id):
             get_drink.title = data['title']
         if 'recipe' in data:
             get_drink.recipe = json.dumps(data['recipe'])
+
         get_drink.update()
+
         return jsonify({
             'success': True,
             'drinks': drink,
