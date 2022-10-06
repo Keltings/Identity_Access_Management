@@ -60,14 +60,6 @@ def get_token_auth_header():
             'code': 'invalid_header',
             'description': 'Authorization header must start with "Bearer".'
         }, 401)
-    
-    
-
-    """elif len(header_parts) > 2:
-        raise AuthError({
-            'code': 'invalid_header',
-            'description': 'Authorization header must be bearer token.'
-        }, 401)"""
 
     token = header_parts[1]
     return token
