@@ -19,7 +19,7 @@ uncomment the following line to initialize the datbase
 '''
 db_drop_and_create_all()
 
-####################### ROUTES ##############################
+####################### ROUTES #############################
 '''
     GET /drinks endpoint 
         is a public endpoint
@@ -37,11 +37,13 @@ def get_drinks():
 
     if not drinks_queried:
         abort(404)
+    else:
+        print(drinks)
 
-    return jsonify({
+        return jsonify({
         'success': True,
         'drinks': drinks,
-    })
+        })
 
 
 '''
@@ -53,14 +55,15 @@ GET /drinks-detail endpoint
 '''
 
 @app.route('/drinks-detail', methods=['GET'])
-#@requires_auth('get:drinks-detail')
-def get_drinks_detail(jwt):
+@requires_auth('get:drinks-detail')
+def get_drinks_detail(payload):
     get_details = Drink.query.order_by(Drink.id).all()
     drinks = [drink.long() for drink in get_details]
 
     if not get_details:
         abort(404)
 
+    #print(payload)
     return jsonify({
 
         'success': True,
@@ -79,7 +82,7 @@ POST /drinks
 
 @app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
-def create_drinks(jwt):
+def create_drinks(payload):
     data = request.get_json()
     
     if 'title' and 'recipe' not in data:
@@ -90,13 +93,14 @@ def create_drinks(jwt):
 
     try:
         new_drink.insert()
+    
+        return jsonify({
+            'success': True,
+            'drinks': drink,
+            })
+
     except:
         abort(422)
-
-    return jsonify({
-        'success': True,
-        'drinks': drink,
-    })
 
 '''
 PATCH /drinks/<id> endpoint:
@@ -111,7 +115,7 @@ PATCH /drinks/<id> endpoint:
 
 @app.route('/drinks/<int:drink_id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
-def edit_drink(jwt,drink_id):
+def edit_drink(payload,drink_id):
 
     get_drink = Drink.query.get(drink_id)
     drink = [get_drink.long()]
@@ -148,7 +152,7 @@ DELETE /drinks/<id> endpoint:
 
 @app.route('/drinks/<int:drink_id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
-def delete_drinks(jwt,drink_id):
+def delete_drinks(payload,drink_id):
     try:
         get_drink = Drink.query.get(drink_id)
 
@@ -189,14 +193,7 @@ implement error handlers using the @app.errorhandler(error) decorator
                     }), 404
 
 '''
-
-@app.errorhandler(403)
-def forbidden(error):
-  return jsonify({
-    'success': False,
-    'error': 403,
-    'message':'forbidden'
-  }), 403    
+  
 
 # implement error handler for 404
 @app.errorhandler(404)
@@ -209,9 +206,11 @@ def unauthorized(error):
 
  # implement error handler for AuthError
 @app.errorhandler(AuthError)
-def auth_error(error):
-    return jsonify({
-        'success': False,
-        'error': 401,
-        'message': 'authorization error'
-    }),401
+def authError(error):
+    return (
+        jsonify({
+            'success': False,
+            'error': error.status_code,
+            'message': error.error['description']
+        }), error.status_code
+    )

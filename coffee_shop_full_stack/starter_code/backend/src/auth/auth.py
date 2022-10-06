@@ -10,6 +10,7 @@ AUTH0_DOMAIN = 'kelting.us.auth0.com'
 ALGORITHMS = ['RS256']
 API_AUDIENCE = 'coffee'
 
+
 ## AuthError Exception
 '''
 AuthError Exception
@@ -35,34 +36,38 @@ def get_token_auth_header():
     I.E Obtains the Access Token from the Authorization Header
     '''
 
-    # get the token
-    auth_header = request.headers.get('Authorization', None)
+    
+   
     # check if authorization is not in request
-    if not auth_header:
+    if 'Authorization' not in request.headers:
         raise AuthError({
             'code': 'authorization_header_missing',
             'description': 'Authorization header is expected.'
         }, 401)
 
-    header_parts = auth_header.split()
-    if header_parts[0].lower() != 'bearer':
-        raise AuthError({
-            'code': 'invalid_header',
-            'description': 'Authorization header must start with "Bearer".'
-        }, 401)
-    
+    auth_header = request.headers['Authorization']    
+    header_parts = auth_header.split(' ')
+
     # check if token is valid
-    elif len(header_parts) == 1:
+    if len(header_parts) !=2:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Token not found.'
         }, 401)
 
-    elif len(header_parts) > 2:
+    elif header_parts[0].lower() != 'bearer':
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'Authorization header must start with "Bearer".'
+        }, 401)
+    
+    
+
+    """elif len(header_parts) > 2:
         raise AuthError({
             'code': 'invalid_header',
             'description': 'Authorization header must be bearer token.'
-        }, 401)
+        }, 401)"""
 
     token = header_parts[1]
     return token
@@ -85,7 +90,7 @@ Implementing a check_permissions(permission, payload) method
                         raise AuthError({
                             'code': 'invalid_claims',
                             'description': 'Permissions not included in JWT.'
-                        }, 400)
+                        }, 400)                  
 
     #check if permission exits within that payload array
     if permission not in payload['permissions']:
@@ -193,9 +198,9 @@ def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            jwt = get_token_auth_header()
+            token = get_token_auth_header()
             try:
-                payload = verify_decode_jwt(jwt)
+                payload = verify_decode_jwt(token)
             except:
                 abort(401)  
             # ensure that the permision exist in the required claim in jwt      
